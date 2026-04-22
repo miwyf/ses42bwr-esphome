@@ -1,0 +1,66 @@
+esphome:
+  name: ses42bwr-demo
+  friendly_name: ses42bwr-demo
+
+esp8266:
+  board: esp12e
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/YOUR_GITHUB_USER/ses42bwr-esphome.git
+      ref: main
+    components: [waveshare_epaper]
+
+# Local development:
+# Replace the external_components block above with:
+# external_components:
+#   - source:
+#       type: local
+#       path: ../components
+#     components: [waveshare_epaper]
+
+logger:
+
+api:
+
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+spi:
+  clk_pin: GPIO14
+  mosi_pin: GPIO13
+
+font:
+  - file: "gfonts://Roboto"
+    id: font_main
+    size: 24
+
+display:
+  - platform: waveshare_epaper
+    id: eink_display
+    cs_pin: GPIO15
+    dc_pin: GPIO0
+    busy_pin: GPIO4
+    reset_pin: GPIO2
+    model: ses42bwr
+    update_interval: 30s
+    lambda: |-
+      it.fill(COLOR_OFF);
+      it.rectangle(0, 0, it.get_width(), it.get_height(), COLOR_ON);
+      it.print(16, 16, id(font_main), COLOR_ON, "SES42BWR");
+
+      if (id(esptime).now().is_valid()) {
+        it.strftime(16, 56, id(font_main), COLOR_ON, "%Y-%m-%d %H:%M", id(esptime).now());
+      } else {
+        it.print(16, 56, id(font_main), COLOR_ON, "Waiting for time...");
+      }
+
+time:
+  - platform: sntp
+    id: esptime
+    timezone: UTC

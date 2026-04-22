@@ -1,0 +1,10 @@
+.esphome/
+.pioenvs/
+.piolibdeps/
+.vscode/
+secrets.yaml
+*.bin
+*.elf
+*.map
+*.log
+__pycache__/
