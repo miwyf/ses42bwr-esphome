@@ -49,7 +49,7 @@ Remote use:
 external_components:
   - source:
       type: git
-      url: https://github.com/YOUR_GITHUB_USER/ses42bwr-esphome
+      url: https://github.com/miwyf/ses42bwr-esphome
       ref: main
     components: [waveshare_epaper]
 ```
