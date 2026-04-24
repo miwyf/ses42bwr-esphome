@@ -59,6 +59,7 @@ WaveshareEPaper2P9InDKE = waveshare_epaper_ns.class_(
 )
 GDEY042T81 = waveshare_epaper_ns.class_("GDEY042T81", WaveshareEPaper)
 Ses42BWR = waveshare_epaper_ns.class_("Ses42BWR", WaveshareEPaper)
+Blozi42 = waveshare_epaper_ns.class_("Blozi42", WaveshareEPaper)
 WaveshareEPaper2P9InD = waveshare_epaper_ns.class_(
     "WaveshareEPaper2P9InD", WaveshareEPaper
 )
@@ -153,6 +154,7 @@ MODELS = {
     "2.90in-dke": ("c", WaveshareEPaper2P9InDKE),
     "gdey042t81": ("c", GDEY042T81),
     "ses42bwr": ("c", Ses42BWR),
+    "blozi42": ("c", Blozi42),
     "4.20in": ("b", WaveshareEPaper4P2In),
     "4.20in-bv2": ("b", WaveshareEPaper4P2InBV2),
     "4.20in-bv2-bwr": ("b", WaveshareEPaper4P2InBV2BWR),

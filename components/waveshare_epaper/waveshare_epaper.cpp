@@ -2799,6 +2799,93 @@ void Ses42BWR::dump_config() {
   LOG_UPDATE_INTERVAL(this);
 }
 
+void Blozi42::initialize() {
+  // BLOZI Endor / P420016-MF1-A follows the Waveshare 4.2 V2 style init sequence.
+  if (this->reset_pin_ != nullptr) {
+    this->reset_pin_->digital_write(true);
+    delay(100);
+    this->reset_pin_->digital_write(false);
+    delay(2);
+    this->reset_pin_->digital_write(true);
+    delay(100);
+  }
+
+  this->wait_until_idle_();
+  this->command(0x12);  // soft reset
+  this->wait_until_idle_();
+
+  this->command(0x21);  // display update control
+  this->data(0x40);
+  this->data(0x00);
+
+  this->command(0x3C);  // border waveform
+  this->data(0x05);
+
+  this->command(0x11);  // data entry mode
+  this->data(0x03);
+
+  // Set full window: X is byte addressed.
+  this->command(0x44);
+  this->data(0x00);
+  this->data((this->get_width_internal() - 1) >> 3);
+
+  this->command(0x45);
+  this->data(0x00);
+  this->data(0x00);
+  this->data((this->get_height_internal() - 1) & 0xFF);
+  this->data((this->get_height_internal() - 1) >> 8);
+
+  this->command(0x4E);
+  this->data(0x00);
+
+  this->command(0x4F);
+  this->data(0x00);
+  this->data(0x00);
+
+  this->wait_until_idle_();
+}
+
+void HOT Blozi42::display() {
+  this->command(0x24);
+  this->start_data_();
+  this->write_array(this->buffer_, this->get_buffer_length_());
+  this->end_data_();
+
+  this->command(0x26);
+  this->start_data_();
+  this->write_array(this->buffer_, this->get_buffer_length_());
+  this->end_data_();
+
+  this->command(0x22);
+  this->data(0xF7);
+  this->command(0x20);
+  this->wait_until_idle_();
+}
+
+void HOT Blozi42::draw_absolute_pixel_internal(int x, int y, Color color) {
+  if (x >= this->get_width_internal() || y >= this->get_height_internal() || x < 0 || y < 0)
+    return;
+
+  const uint32_t pos = (x + y * this->get_width_controller()) / 8u;
+  const uint8_t subpos = x & 0x07;
+  if (!color.is_on()) {
+    this->buffer_[pos] |= 0x80 >> subpos;
+  } else {
+    this->buffer_[pos] &= ~(0x80 >> subpos);
+  }
+}
+
+int Blozi42::get_width_internal() { return 400; }
+int Blozi42::get_height_internal() { return 300; }
+void Blozi42::dump_config() {
+  LOG_DISPLAY("", "Waveshare E-Paper", this);
+  ESP_LOGCONFIG(TAG, "  Model: BLOZI Endor 4.2");
+  LOG_PIN("  Reset Pin: ", this->reset_pin_);
+  LOG_PIN("  DC Pin: ", this->dc_pin_);
+  LOG_PIN("  Busy Pin: ", this->busy_pin_);
+  LOG_UPDATE_INTERVAL(this);
+}
+
 // ========================================================
 //               4.20in Type B (LUT from OTP)
 // Datasheet:

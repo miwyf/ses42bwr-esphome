@@ -613,6 +613,49 @@ class Ses42BWR : public WaveshareEPaper {
   int get_height_internal() override;
 };
 
+class Blozi42 : public WaveshareEPaper {
+ public:
+  void initialize() override;
+
+  void display() override;
+
+  void dump_config() override;
+
+  void set_full_update_every(uint32_t) {}
+
+  void deep_sleep() override {
+    this->command(0x50);
+    this->data(0x17);
+
+    this->command(0x82);
+    this->command(0x00);
+
+    delay(100);  // NOLINT
+
+    this->command(0x01);
+    this->data(0x00);
+    this->data(0x00);
+    this->data(0x00);
+    this->data(0x00);
+    this->data(0x00);
+    delay(100);  // NOLINT
+
+    this->command(0x02);
+    this->wait_until_idle_();
+    this->command(0x07);
+    this->data(0xA5);
+  }
+
+ protected:
+  void draw_absolute_pixel_internal(int x, int y, Color color) override;
+
+  int get_width_internal() override;
+
+  int get_height_internal() override;
+
+  uint32_t idle_timeout_() override { return 5000; }
+};
+
 class WaveshareEPaper4P2InBV2 : public WaveshareEPaper {
  public:
   void initialize() override;

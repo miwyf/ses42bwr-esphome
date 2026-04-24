@@ -1,6 +1,6 @@
-# SES42BWR ESPHome External Component
+# SES42BWR / BLOZI42 ESPHome External Component
 
-An ESPHome `external_components` repository that adds `ses42bwr` support to the deprecated `waveshare_epaper` platform.
+An ESPHome `external_components` repository that adds `ses42bwr` and `blozi42` support to the deprecated `waveshare_epaper` platform.
 
 Current scope:
 
@@ -9,7 +9,7 @@ Current scope:
 - Horizontal mirror corrected in software
 - Compiles on ESP8266
 
-## Verified Panel
+## Verified Panels
 
 Tested with:
 
@@ -18,6 +18,13 @@ Tested with:
 - Type: BWR panel
 - Product code: `R42A01101`
 - FPC/screen cable marking: `A1360071-00`
+
+Also adapted for:
+
+- Brand: BLOZI
+- Model: Endor
+- Screen/FPC marking: `P420016-MF1-A`
+- Model name in YAML: `blozi42`
 
 Not included:
 
@@ -85,10 +92,12 @@ display:
       it.print(10, 10, id(my_font), COLOR_ON, "SES42BWR");
 ```
 
+Use `model: blozi42` for the BLOZI Endor 4.2 panel.
+
 See [examples/esp8266_ses42bwr_basic.yaml](examples/esp8266_ses42bwr_basic.yaml) for a complete minimal example.
 
 ## Notes
 
 - This repository overrides the built-in `waveshare_epaper` component rather than introducing a brand new ESPHome platform name.
-- `full_update_every` is accepted because ESPHome generates calls for it, but this model currently behaves as full refresh only.
+- `full_update_every` is accepted because ESPHome generates calls for it, but these models currently behave as full refresh only.
 - The implementation was derived from a working Arduino SES42BWR driver and adapted into the ESPHome `waveshare_epaper` structure.
