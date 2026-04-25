@@ -2709,6 +2709,33 @@ void Ses42BWR::initialize() {
   this->wait_until_idle_();
 }
 
+void Ses42BWR::fill(Color color) {
+  if (this->get_clipping().is_set()) {
+    Display::fill(color);
+    return;
+  }
+
+  const uint32_t buf_len_half = this->get_buffer_length_() / 2u;
+
+  // The current demo lambdas always start with a full-screen clear.
+  // COLOR_OFF means the caller wants monochrome semantics, while an
+  // explicit RGB white means the caller wants tri-color semantics.
+  this->mono_compat_mode_ = (color.raw_32 == display::COLOR_OFF.raw_32);
+
+  memset(this->buffer_, 0xFF, buf_len_half);
+  memset(this->buffer_ + buf_len_half, 0xFF, buf_len_half);
+
+  if (this->mono_compat_mode_) {
+    return;
+  }
+
+  if (color.raw_32 == 0) {
+    memset(this->buffer_, 0x00, buf_len_half);
+  } else if ((color.red > 0) && (color.green == 0) && (color.blue == 0)) {
+    memset(this->buffer_ + buf_len_half, 0x00, buf_len_half);
+  }
+}
+
 void HOT Ses42BWR::display() {
   const uint32_t buf_len_half = this->get_buffer_length_() / 2u;
 
@@ -2745,7 +2772,14 @@ void HOT Ses42BWR::draw_absolute_pixel_internal(int x, int y, Color color) {
   this->buffer_[pos] |= mask;
   this->buffer_[pos + buf_half_len] |= mask;
 
-  if (!color.is_on()) {
+  if (this->mono_compat_mode_) {
+    if (color.is_on()) {
+      this->buffer_[pos] &= ~mask;
+    }
+    return;
+  }
+
+  if (color.raw_32 == 0) {
     this->buffer_[pos] &= ~mask;
   } else if ((color.red > 0) && (color.green == 0) && (color.blue == 0)) {
     this->buffer_[pos + buf_half_len] &= ~mask;
@@ -2757,6 +2791,119 @@ int Ses42BWR::get_height_internal() { return 300; }
 void Ses42BWR::dump_config() {
   LOG_DISPLAY("", "Waveshare E-Paper", this);
   ESP_LOGCONFIG(TAG, "  Model: SES42BWR");
+  LOG_PIN("  Reset Pin: ", this->reset_pin_);
+  LOG_PIN("  DC Pin: ", this->dc_pin_);
+  LOG_PIN("  Busy Pin: ", this->busy_pin_);
+  LOG_UPDATE_INTERVAL(this);
+}
+
+void Ses42::fill(Color color) {
+  if (this->get_clipping().is_set()) {
+    Display::fill(color);
+    return;
+  }
+
+  const uint8_t fill = color.is_on() ? 0x00 : 0xFF;
+  for (uint32_t i = 0; i < this->get_buffer_length_(); i++)
+    this->buffer_[i] = fill;
+}
+
+void Ses42::initialize() {
+  // Legacy SES 4.2 mono mode using the original LUT-driven setup.
+  this->command(0x01);
+  this->data(0x03);
+  this->data(0x00);
+  this->data(0x2B);
+  this->data(0x2B);
+  this->data(0xFF);
+
+  this->command(0x06);
+  this->data(0x17);
+  this->data(0x17);
+  this->data(0x17);
+
+  this->command(0x04);
+  this->wait_until_idle_();
+
+  this->command(0x00);
+  this->data(0x37);
+
+  this->command(0x61);
+  this->data(0x01);
+  this->data(0x90);
+  this->data(0x01);
+  this->data(0x2C);
+
+  this->command(0x50);
+  this->data(0x97);
+
+  this->command(0x20);
+  for (uint8_t i : LUT_VCOM_DC_SES42BWR)
+    this->data(i);
+  this->command(0x21);
+  for (uint8_t i : LUT_WHITE_TO_WHITE_SES42BWR)
+    this->data(i);
+  this->command(0x22);
+  for (uint8_t i : LUT_BLACK_TO_WHITE_SES42BWR)
+    this->data(i);
+  this->command(0x23);
+  for (uint8_t i : LUT_WHITE_TO_BLACK_SES42BWR)
+    this->data(i);
+  this->command(0x24);
+  for (uint8_t i : LUT_BLACK_TO_BLACK_SES42BWR)
+    this->data(i);
+}
+
+void HOT Ses42::display() {
+  this->command(0x61);
+  this->data(0x01);
+  this->data(0x90);
+  this->data(0x01);
+  this->data(0x2C);
+
+  this->command(0x82);
+  this->data(0x12);
+
+  this->command(0x50);
+  this->data(0x97);
+
+  this->command(0x10);
+  delay(2);
+  this->start_data_();
+  this->write_array(this->buffer_, this->get_buffer_length_());
+  this->end_data_();
+
+  delay(2);
+  this->command(0x13);
+  delay(2);
+  this->start_data_();
+  this->write_array(this->buffer_, this->get_buffer_length_());
+  this->end_data_();
+
+  this->command(0x12);
+  this->wait_until_idle_();
+}
+
+void HOT Ses42::draw_absolute_pixel_internal(int x, int y, Color color) {
+  if (x >= this->get_width_internal() || y >= this->get_height_internal() || x < 0 || y < 0)
+    return;
+
+  y = this->get_height_internal() - 1 - y;
+
+  const uint32_t pos = (x + y * this->get_width_controller()) / 8u;
+  const uint8_t subpos = x & 0x07;
+  if (!color.is_on()) {
+    this->buffer_[pos] |= 0x80 >> subpos;
+  } else {
+    this->buffer_[pos] &= ~(0x80 >> subpos);
+  }
+}
+
+int Ses42::get_width_internal() { return 400; }
+int Ses42::get_height_internal() { return 300; }
+void Ses42::dump_config() {
+  LOG_DISPLAY("", "Waveshare E-Paper", this);
+  ESP_LOGCONFIG(TAG, "  Model: SES42 mono");
   LOG_PIN("  Reset Pin: ", this->reset_pin_);
   LOG_PIN("  DC Pin: ", this->dc_pin_);
   LOG_PIN("  Busy Pin: ", this->busy_pin_);

@@ -1,11 +1,11 @@
-# SES42BWR / BLOZI42 ESPHome External Component
+# SES42 / SES42BWR / BLOZI42 ESPHome External Component
 
-An ESPHome `external_components` repository that adds `ses42bwr` and `blozi42` support to the deprecated `waveshare_epaper` platform.
+An ESPHome `external_components` repository that adds `ses42`, `ses42bwr` and `blozi42` support to the deprecated `waveshare_epaper` platform.
 
 Current scope:
 
-- Black/white only
-- Full refresh only
+- `ses42`: Black/white only, full refresh only
+- `ses42bwr` & `blozi42`: Black/white only (red plane not currently supported), full refresh only
 - Horizontal mirror corrected in software
 - Compiles on ESP8266
 
@@ -18,6 +18,7 @@ Tested with:
 - Type: BWR panel
 - Product code: `R42A01101`
 - FPC/screen cable marking: `A1360071-00`
+- Model names in YAML: `ses42` (mono) or `ses42bwr` (BWR rendering path)
 
 Also adapted for:
 
@@ -74,6 +75,28 @@ external_components:
 
 ## Basic Usage
 
+Example for `ses42` (mono rendering):
+
+```yaml
+spi:
+  clk_pin: GPIO14
+  mosi_pin: GPIO13
+
+display:
+  - platform: waveshare_epaper
+    cs_pin: GPIO15
+    dc_pin: GPIO0
+    busy_pin: GPIO4
+    reset_pin: GPIO2
+    model: ses42
+    update_interval: 30s
+    lambda: |-
+      it.fill(COLOR_OFF);
+      it.print(10, 10, id(my_font), COLOR_ON, "SES42");
+```
+
+Example for `ses42bwr` (BWR rendering path):
+
 ```yaml
 spi:
   clk_pin: GPIO14
@@ -99,5 +122,9 @@ See [examples/esp8266_ses42bwr_basic.yaml](examples/esp8266_ses42bwr_basic.yaml)
 ## Notes
 
 - This repository overrides the built-in `waveshare_epaper` component rather than introducing a brand new ESPHome platform name.
+- Three model variants are available:
+  - `ses42`: Legacy mono rendering path for SES 4.2 panels
+  - `ses42bwr`: Z21-based black/white/red rendering path for SES 4.2 panels
+  - `blozi42`: For BLOZI Endor 4.2 panels
 - `full_update_every` is accepted because ESPHome generates calls for it, but these models currently behave as full refresh only.
 - The implementation was derived from a working Arduino SES42BWR driver and adapted into the ESPHome `waveshare_epaper` structure.

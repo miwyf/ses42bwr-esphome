@@ -4,6 +4,7 @@ This folder contains a local ESPHome `external_components` override for `wavesha
 
 It adds extra 4.2-inch models:
 
+- `ses42`
 - `ses42bwr`
 - `blozi42`
 
@@ -24,6 +25,11 @@ Tested with:
 - Product code: `R42A01101`
 - FPC/screen cable marking: `A1360071-00`
 
+Model names in YAML:
+
+- `ses42`: legacy mono rendering path for the SES 4.2 panel
+- `ses42bwr`: Z21-based black/white/red rendering path
+
 Also adapted for:
 
 - Brand: BLOZI
@@ -38,13 +44,13 @@ Not included:
 
 ## Files
 
-- `display.py`: registers the `ses42bwr` and `blozi42` models
-- `waveshare_epaper.h`: declares the `Ses42BWR` and `Blozi42` display classes
+- `display.py`: registers the `ses42`, `ses42bwr` and `blozi42` models
+- `waveshare_epaper.h`: declares the `Ses42`, `Ses42BWR` and `Blozi42` display classes
 - `waveshare_epaper.cpp`: validated 4.2-inch init/LUT sequence, full refresh logic, horizontal mirror fix
 
 ## How To Use
 
-In your YAML, point `external_components` to your local `components` folder and select `model: ses42bwr` or `model: blozi42`.
+In your YAML, point `external_components` to your local `components` folder and select `model: ses42`, `model: ses42bwr` or `model: blozi42`.
 
 Example:
 
@@ -66,11 +72,11 @@ display:
     dc_pin: GPIO0
     busy_pin: GPIO4
     reset_pin: GPIO2
-    model: blozi42
+    model: ses42
     update_interval: 30s
     lambda: |-
       it.fill(COLOR_OFF);
-      it.print(10, 10, id(my_font), COLOR_ON, "BLOZI Endor 4.2");
+      it.print(10, 10, id(my_font), COLOR_ON, "SES42 4.2");
 ```
 
 ## Notes
