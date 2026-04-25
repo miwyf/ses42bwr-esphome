@@ -58,7 +58,7 @@ WaveshareEPaper2P9InDKE = waveshare_epaper_ns.class_(
     "WaveshareEPaper2P9InDKE", WaveshareEPaper
 )
 GDEY042T81 = waveshare_epaper_ns.class_("GDEY042T81", WaveshareEPaper)
-Ses42BWR = waveshare_epaper_ns.class_("Ses42BWR", WaveshareEPaper)
+Ses42BWR = waveshare_epaper_ns.class_("Ses42BWR", WaveshareEPaperBWR)
 Blozi42 = waveshare_epaper_ns.class_("Blozi42", WaveshareEPaper)
 WaveshareEPaper2P9InD = waveshare_epaper_ns.class_(
     "WaveshareEPaper2P9InD", WaveshareEPaper

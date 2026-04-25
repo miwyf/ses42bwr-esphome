@@ -2698,78 +2698,36 @@ void WaveshareEPaper4P2In::dump_config() {
 }
 
 void Ses42BWR::initialize() {
-  // Tuned from the validated SES42BWR Arduino driver.
-  this->command(0x01);
-  this->data(0x03);
-  this->data(0x00);
-  this->data(0x2B);
-  this->data(0x2B);
-  this->data(0xFF);
+  // A13600** SES panels match the Z21 three-color command set.
+  this->command(0x00);  // panel setting
+  this->data(0x0F);     // LUT from OTP, 400x300
 
-  this->command(0x06);
-  this->data(0x17);
-  this->data(0x17);
-  this->data(0x17);
+  this->command(0x50);  // VCOM and data interval
+  this->data(0xF7);     // border floating
 
-  this->command(0x04);
+  this->command(0x04);  // power on
   this->wait_until_idle_();
-
-  this->command(0x00);
-  this->data(0x37);
-
-  this->command(0x61);
-  this->data(0x01);
-  this->data(0x90);
-  this->data(0x01);
-  this->data(0x2C);
-
-  this->command(0x50);
-  this->data(0x97);
-
-  this->command(0x20);
-  for (uint8_t i : LUT_VCOM_DC_SES42BWR)
-    this->data(i);
-  this->command(0x21);
-  for (uint8_t i : LUT_WHITE_TO_WHITE_SES42BWR)
-    this->data(i);
-  this->command(0x22);
-  for (uint8_t i : LUT_BLACK_TO_WHITE_SES42BWR)
-    this->data(i);
-  this->command(0x23);
-  for (uint8_t i : LUT_WHITE_TO_BLACK_SES42BWR)
-    this->data(i);
-  this->command(0x24);
-  for (uint8_t i : LUT_BLACK_TO_BLACK_SES42BWR)
-    this->data(i);
 }
 
 void HOT Ses42BWR::display() {
-  this->command(0x61);
-  this->data(0x01);
-  this->data(0x90);
-  this->data(0x01);
-  this->data(0x2C);
+  const uint32_t buf_len_half = this->get_buffer_length_() / 2u;
 
-  this->command(0x82);
-  this->data(0x12);
-
-  this->command(0x50);
-  this->data(0x97);
-
-  this->command(0x10);
+  this->command(0x10);  // black plane
   delay(2);
   this->start_data_();
-  this->write_array(this->buffer_, this->get_buffer_length_());
+  this->write_array(this->buffer_, buf_len_half);
   this->end_data_();
 
-  delay(2);
-  this->command(0x13);
+  this->command(0x13);  // red plane
   delay(2);
   this->start_data_();
-  this->write_array(this->buffer_, this->get_buffer_length_());
+  this->write_array(this->buffer_ + buf_len_half, buf_len_half);
   this->end_data_();
 
-  this->command(0x12);
+  this->command(0x12);  // display refresh
+  this->wait_until_idle_();
+
+  this->command(0x02);  // power off
   this->wait_until_idle_();
 }
 
@@ -2777,14 +2735,20 @@ void HOT Ses42BWR::draw_absolute_pixel_internal(int x, int y, Color color) {
   if (x >= this->get_width_internal() || y >= this->get_height_internal() || x < 0 || y < 0)
     return;
 
-  x = this->get_width_internal() - 1 - x;
+  const uint32_t buf_half_len = this->get_buffer_length_() / 2u;
 
   const uint32_t pos = (x + y * this->get_width_controller()) / 8u;
   const uint8_t subpos = x & 0x07;
+  const uint8_t mask = 0x80 >> subpos;
+
+  // Z21 uses active-low bits on both SRAM planes.
+  this->buffer_[pos] |= mask;
+  this->buffer_[pos + buf_half_len] |= mask;
+
   if (!color.is_on()) {
-    this->buffer_[pos] |= 0x80 >> subpos;
-  } else {
-    this->buffer_[pos] &= ~(0x80 >> subpos);
+    this->buffer_[pos] &= ~mask;
+  } else if ((color.red > 0) && (color.green == 0) && (color.blue == 0)) {
+    this->buffer_[pos + buf_half_len] &= ~mask;
   }
 }
 

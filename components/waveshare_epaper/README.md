@@ -9,7 +9,7 @@ It adds extra 4.2-inch models:
 
 Current scope:
 
-- Black/white only
+- Black/white/red
 - Full refresh only
 - ESP8266 verified to compile
 - Based on the ESPHome `waveshare_epaper` architecture
@@ -34,7 +34,6 @@ Also adapted for:
 Not included:
 
 - Partial refresh
-- BWR/red plane support
 - Upstream compatibility guarantee across future ESPHome releases
 
 ## Files

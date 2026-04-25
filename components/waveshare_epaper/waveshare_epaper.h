@@ -572,7 +572,7 @@ class WaveshareEPaper4P2In : public WaveshareEPaper {
   int get_height_internal() override;
 };
 
-class Ses42BWR : public WaveshareEPaper {
+class Ses42BWR : public WaveshareEPaperBWR {
  public:
   void initialize() override;
 
@@ -584,23 +584,11 @@ class Ses42BWR : public WaveshareEPaper {
 
   void deep_sleep() override {
     this->command(0x50);
-    this->data(0x17);
-
-    this->command(0x82);
-    this->command(0x00);
-
-    delay(100);  // NOLINT
-
-    this->command(0x01);
-    this->data(0x00);
-    this->data(0x00);
-    this->data(0x00);
-    this->data(0x00);
-    this->data(0x00);
-    delay(100);  // NOLINT
+    this->data(0xF7);
 
     this->command(0x02);
     this->wait_until_idle_();
+
     this->command(0x07);
     this->data(0xA5);
   }
