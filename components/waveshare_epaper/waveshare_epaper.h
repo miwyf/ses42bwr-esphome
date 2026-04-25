@@ -605,6 +605,36 @@ class Ses42BWR : public WaveshareEPaperBWR {
   bool mono_compat_mode_{false};
 };
 
+class Ses74BWR : public WaveshareEPaperBWR {
+ public:
+  void fill(Color color) override;
+
+  void initialize() override;
+
+  void display() override;
+
+  void dump_config() override;
+
+  void set_full_update_every(uint32_t) {}
+
+  void deep_sleep() override {}
+
+ protected:
+  void draw_absolute_pixel_internal(int x, int y, Color color) override;
+
+  int get_width_internal() override;
+
+  int get_height_internal() override;
+
+  uint32_t idle_timeout_() override { return 40000u; }
+
+  void reset_ext3_();
+  bool wait_until_ready_high_();
+  void send_index_data_(uint8_t index, const uint8_t *data, uint32_t size);
+
+  bool mono_compat_mode_{false};
+};
+
 class Ses42 : public WaveshareEPaper {
  public:
   void fill(Color color) override;

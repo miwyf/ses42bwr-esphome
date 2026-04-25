@@ -1,11 +1,12 @@
-# SES42 / SES42BWR / BLOZI42 / BLOZI42BWR ESPHome External Component
+# SES42 / SES42BWR / BLOZI42 / BLOZI42BWR / SES74BWR ESPHome External Component
 
-An ESPHome `external_components` repository that adds `ses42`, `ses42bwr`, `blozi42` and `blozi42bwr` support to the deprecated `waveshare_epaper` platform.
+An ESPHome `external_components` repository that adds `ses42`, `ses42bwr`, `blozi42`, `blozi42bwr` and `ses74bwr` support to the deprecated `waveshare_epaper` platform.
 
 Current scope:
 
 - `ses42` & `blozi42`: Black/white only, full refresh only
 - `ses42bwr` & `blozi42bwr`: Black/white/red (three-color), full refresh only
+- `ses74bwr`: Black/white/red (three-color) 7.4", full refresh only
 - Horizontal mirror corrected in software
 - Compiles on ESP8266
 
@@ -26,6 +27,15 @@ Also adapted for:
 - Model: Endor
 - Screen/FPC marking: `P420016-MF1-A`
 - Model names in YAML: `blozi42` (mono) or `blozi42bwr` (BWR rendering path)
+
+Also adapted for:
+
+- Brand: SES-imagotag / VUSION
+- Size: 7.4"
+- Type: BWR panel
+- Controller: Pervasive E2741CS0Bx
+- Resolution: 800 × 480
+- Model name in YAML: `ses74bwr` (BWR rendering path)
 
 Not included:
 
@@ -138,13 +148,36 @@ Use `model: blozi42` for mono rendering or `model: blozi42bwr` for BWR rendering
 
 See [examples/esp8266_ses42bwr_basic.yaml](examples/esp8266_ses42bwr_basic.yaml) for a complete minimal example.
 
+Example for `ses74bwr` (SES 7.4" BWR rendering path):
+
+```yaml
+spi:
+  clk_pin: GPIO14
+  mosi_pin: GPIO13
+
+display:
+  - platform: waveshare_epaper
+    cs_pin: GPIO15
+    dc_pin: GPIO0
+    busy_pin: GPIO4
+    reset_pin: GPIO2
+    model: ses74bwr
+    update_interval: 30s
+    lambda: |-
+      it.fill(COLOR_OFF);
+      it.print(10, 10, id(my_font), COLOR_ON, "SES74BWR");
+```
+
+Use `model: ses74bwr` for BWR rendering on the SES 7.4" panel (800 × 480, Pervasive E2741CS0Bx controller).
+
 ## Notes
 
 - This repository overrides the built-in `waveshare_epaper` component rather than introducing a brand new ESPHome platform name.
-- Four model variants are available:
+- Five model variants are available:
   - `ses42`: Legacy mono rendering path for SES 4.2 panels
   - `ses42bwr`: Z21-based black/white/red rendering path for SES 4.2 panels
   - `blozi42`: Mono rendering path for BLOZI Endor 4.2 panels
   - `blozi42bwr`: BWR rendering path for BLOZI Endor 4.2 panels
+  - `ses74bwr`: BWR rendering path for SES 7.4" panels (800 × 480, Pervasive E2741CS0Bx)
 - `full_update_every` is accepted because ESPHome generates calls for it, but these models currently behave as full refresh only.
 - The implementation was derived from a working Arduino SES42BWR driver and adapted into the ESPHome `waveshare_epaper` structure.

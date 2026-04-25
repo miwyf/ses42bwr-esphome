@@ -2797,6 +2797,251 @@ void Ses42BWR::dump_config() {
   LOG_UPDATE_INTERVAL(this);
 }
 
+void Ses74BWR::fill(Color color) {
+  if (this->get_clipping().is_set()) {
+    Display::fill(color);
+    return;
+  }
+
+  const uint32_t buf_len_half = this->get_buffer_length_() / 2u;
+  this->mono_compat_mode_ = (color.raw_32 == display::COLOR_OFF.raw_32);
+
+  // Pervasive EXT3 7.4" encoding (active-high):
+  // white = black plane 0, red plane 0
+  // black = black plane 1, red plane 0
+  // red   = black plane 0, red plane 1
+  memset(this->buffer_, 0x00, buf_len_half);
+  memset(this->buffer_ + buf_len_half, 0x00, buf_len_half);
+
+  if (this->mono_compat_mode_) {
+    return;
+  }
+
+  if ((color.red > 0) && (color.green == 0) && (color.blue == 0)) {
+    memset(this->buffer_ + buf_len_half, 0xFF, buf_len_half);
+  } else if (color.raw_32 == 0) {
+    memset(this->buffer_, 0xFF, buf_len_half);
+  }
+}
+
+void Ses74BWR::initialize() {
+  // The 7.4" EXT3 panel is fully initialised during each display() refresh cycle.
+}
+
+void Ses74BWR::reset_ext3_() {
+  if (this->reset_pin_ == nullptr) {
+    return;
+  }
+  delay(200);
+  this->reset_pin_->digital_write(true);
+  delay(20);
+  this->reset_pin_->digital_write(false);
+  delay(200);
+  this->reset_pin_->digital_write(true);
+  delay(50);
+}
+
+bool Ses74BWR::wait_until_ready_high_() {
+  if (this->busy_pin_ == nullptr) {
+    return true;
+  }
+  const uint32_t start = millis();
+  while (!this->busy_pin_->digital_read()) {
+    if (millis() - start > this->idle_timeout_()) {
+      ESP_LOGE(TAG, "Ses74BWR: timeout waiting for BUSY high");
+      return false;
+    }
+    delay(100);
+  }
+  return true;
+}
+
+void Ses74BWR::send_index_data_(uint8_t index, const uint8_t *data, uint32_t size) {
+  this->dc_pin_->digital_write(false);
+  this->enable();
+  delayMicroseconds(50);
+  this->write_byte(index);
+  delayMicroseconds(50);
+  this->disable();
+
+  if (size == 0) {
+    return;
+  }
+
+  this->dc_pin_->digital_write(true);
+  this->enable();
+  delayMicroseconds(50);
+  this->write_array(data, size);
+  delayMicroseconds(50);
+  this->disable();
+}
+
+void HOT Ses74BWR::display() {
+  static const uint8_t duw_74[] = {0x00, 0x3B, 0x00, 0x00, 0x1F, 0x03};
+  static const uint8_t drfw_74[] = {0x00, 0x3B, 0x00, 0xC9};
+  static const uint8_t ram_rw_74[] = {0x3B, 0x00, 0x14};
+  static const uint8_t zero_1[] = {0x00};
+  static const uint8_t dcok_1[] = {0x7D};
+  static const uint8_t c2_1[] = {0x3F};
+  static const uint8_t d8_1[] = {0x00};
+  static const uint8_t d6_1[] = {0x00};
+  static const uint8_t a7_on[] = {0x10};
+  static const uint8_t osc_74[] = {0x00, 0x01};
+  static const uint8_t reg44_0[] = {0x00};
+  static const uint8_t reg45_80[] = {0x80};
+  static const uint8_t reg44_6[] = {0x06};
+  static const uint8_t reg45_82[] = {0x82};
+  static const uint8_t reg60_25[] = {0x25};
+  static const uint8_t reg61_0[] = {0x00};
+  static const uint8_t reg01_0[] = {0x00};
+  static const uint8_t reg02_0[] = {0x00};
+  static const uint8_t refresh_15[] = {0x3C};
+  static const uint8_t off_09[] = {0x7F};
+
+  const uint32_t buf_len_half = this->get_buffer_length_() / 2u;
+  uint8_t *black_buffer = this->buffer_;
+  uint8_t *red_buffer = this->buffer_ + buf_len_half;
+
+  this->reset_ext3_();
+
+  this->send_index_data_(0x13, duw_74, sizeof(duw_74));
+  this->send_index_data_(0x90, drfw_74, sizeof(drfw_74));
+  {
+    const uint8_t dctl = 0x08;
+    this->send_index_data_(0x01, &dctl, 1);
+  }
+
+  this->send_index_data_(0x12, ram_rw_74, sizeof(ram_rw_74));
+  this->send_index_data_(0x10, black_buffer, buf_len_half);
+  this->send_index_data_(0x12, ram_rw_74, sizeof(ram_rw_74));
+  this->send_index_data_(0x11, red_buffer, buf_len_half);
+
+  // COG initialisation
+  this->send_index_data_(0x05, dcok_1, 1);
+  delay(200);
+  this->send_index_data_(0x05, zero_1, 1);
+  delay(10);
+  this->send_index_data_(0xC2, c2_1, 1);
+  delay(1);
+  this->send_index_data_(0xD8, d8_1, 1);
+  this->send_index_data_(0xD6, d6_1, 1);
+  this->send_index_data_(0xA7, a7_on, 1);
+  delay(100);
+  this->send_index_data_(0xA7, zero_1, 1);
+  delay(100);
+  this->send_index_data_(0x03, osc_74, sizeof(osc_74));
+  this->send_index_data_(0x44, reg44_0, 1);
+  this->send_index_data_(0x45, reg45_80, 1);
+  this->send_index_data_(0xA7, a7_on, 1);
+  delay(100);
+  this->send_index_data_(0xA7, zero_1, 1);
+  delay(100);
+  this->send_index_data_(0x44, reg44_6, 1);
+  this->send_index_data_(0x45, reg45_82, 1);
+  this->send_index_data_(0xA7, a7_on, 1);
+  delay(100);
+  this->send_index_data_(0xA7, zero_1, 1);
+  delay(100);
+  this->send_index_data_(0x60, reg60_25, 1);
+  this->send_index_data_(0x61, reg61_0, 1);
+  this->send_index_data_(0x01, reg01_0, 1);
+  this->send_index_data_(0x02, reg02_0, 1);
+
+  // DC-DC soft-start
+  uint8_t index51[] = {0x50, 0x01, 0x0A, 0x01};
+  const uint8_t index09[] = {0x1F, 0x9F, 0x7F, 0xFF};
+  this->send_index_data_(0x51, &index51[0], 2);
+
+  for (int value = 1; value <= 4; value++) {
+    this->send_index_data_(0x09, &index09[0], 1);
+    index51[1] = value;
+    this->send_index_data_(0x51, &index51[0], 2);
+    this->send_index_data_(0x09, &index09[1], 1);
+    delay(2);
+  }
+  for (int value = 1; value <= 10; value++) {
+    this->send_index_data_(0x09, &index09[0], 1);
+    index51[3] = value;
+    this->send_index_data_(0x51, &index51[2], 2);
+    this->send_index_data_(0x09, &index09[1], 1);
+    delay(2);
+  }
+  for (int value = 3; value <= 10; value++) {
+    this->send_index_data_(0x09, &index09[2], 1);
+    index51[3] = value;
+    this->send_index_data_(0x51, &index51[2], 2);
+    this->send_index_data_(0x09, &index09[3], 1);
+    delay(2);
+  }
+  for (int value = 9; value >= 2; value--) {
+    this->send_index_data_(0x09, &index09[2], 1);
+    index51[2] = value;
+    this->send_index_data_(0x51, &index51[2], 2);
+    this->send_index_data_(0x09, &index09[3], 1);
+    delay(2);
+  }
+  this->send_index_data_(0x09, &index09[3], 1);
+  delay(10);
+
+  // Display Refresh
+  this->wait_until_ready_high_();
+  this->send_index_data_(0x15, refresh_15, 1);
+  delay(5);
+
+  // DC-DC off
+  this->wait_until_ready_high_();
+  this->send_index_data_(0x09, off_09, 1);
+  this->send_index_data_(0x05, dcok_1, 1);
+  this->send_index_data_(0x09, zero_1, 1);
+  delay(200);
+
+  this->wait_until_ready_high_();
+  this->dc_pin_->digital_write(false);
+  if (this->reset_pin_ != nullptr) {
+    this->reset_pin_->digital_write(false);
+  }
+}
+
+void HOT Ses74BWR::draw_absolute_pixel_internal(int x, int y, Color color) {
+  if (x >= this->get_width_internal() || y >= this->get_height_internal() || x < 0 || y < 0)
+    return;
+
+  const uint32_t buf_half_len = this->get_buffer_length_() / 2u;
+  // SES panel uses column-major scan; mirror x to fix horizontal flip
+  const int mx = this->get_width_internal() - 1 - x;
+  const uint32_t pos = (y + mx * this->get_height_internal()) / 8u;
+  const uint8_t subpos = y & 0x07;
+  const uint8_t mask = 0x80 >> subpos;
+
+  // default: white = black plane 0, red plane 0
+  this->buffer_[pos] &= ~mask;
+  this->buffer_[pos + buf_half_len] &= ~mask;
+
+  if (this->mono_compat_mode_) {
+    if (color.is_on()) {
+      this->buffer_[pos] |= mask;
+    }
+    return;
+  }
+
+  if ((color.red > 0) && (color.green == 0) && (color.blue == 0)) {
+    this->buffer_[pos + buf_half_len] |= mask;  // red
+  } else if (color.raw_32 == 0) {
+    this->buffer_[pos] |= mask;  // black
+  }
+}
+
+int Ses74BWR::get_width_internal() { return 800; }
+int Ses74BWR::get_height_internal() { return 480; }
+void Ses74BWR::dump_config() {
+  LOG_DISPLAY("", "Waveshare E-Paper", this);
+  ESP_LOGCONFIG(TAG, "  Model: SES74BWR (Pervasive 7.4in E2741CS0Bx)");
+  LOG_PIN("  Reset Pin: ", this->reset_pin_);
+  LOG_PIN("  DC Pin: ", this->dc_pin_);
+  LOG_PIN("  Busy Pin: ", this->busy_pin_);
+  LOG_UPDATE_INTERVAL(this);
+}
+
 void Ses42::fill(Color color) {
   if (this->get_clipping().is_set()) {
     Display::fill(color);
