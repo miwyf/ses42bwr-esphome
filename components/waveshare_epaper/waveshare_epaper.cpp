@@ -2997,6 +2997,148 @@ void Blozi42::dump_config() {
   LOG_UPDATE_INTERVAL(this);
 }
 
+void Blozi42BWR::initialize() {
+  // BLOZI Endor 4.2 tri-color follows the vendor EPD_4IN2B_V2 init flow.
+  if (this->reset_pin_ != nullptr) {
+    this->reset_pin_->digital_write(true);
+    delay(100);
+    this->reset_pin_->digital_write(false);
+    delay(2);
+    this->reset_pin_->digital_write(true);
+    delay(100);
+  }
+
+  this->wait_until_idle_();
+  this->command(0x12);  // soft reset
+  this->wait_until_idle_();
+
+  this->command(0x11);  // data entry mode
+  this->data(0x03);
+
+  // Set full window: X is byte addressed.
+  this->command(0x44);
+  this->data(0x00);
+  this->data((this->get_width_internal() - 1) >> 3);
+
+  this->command(0x45);
+  this->data(0x00);
+  this->data(0x00);
+  this->data((this->get_height_internal() - 1) & 0xFF);
+  this->data((this->get_height_internal() - 1) >> 8);
+
+  this->command(0x4E);
+  this->data(0x00);
+
+  this->command(0x4F);
+  this->data(0x00);
+  this->data(0x00);
+
+  this->command(0x3C);  // border waveform
+  this->data(0x05);
+
+  this->command(0x18);  // built-in temperature sensor
+  this->data(0x80);
+
+  this->command(0x21);  // display update control
+  this->data(0x80);
+  this->data(0x80);
+
+  this->wait_until_idle_();
+}
+
+void Blozi42BWR::fill(Color color) {
+  if (this->get_clipping().is_set()) {
+    Display::fill(color);
+    return;
+  }
+
+  const uint32_t buf_len_half = this->get_buffer_length_() / 2u;
+
+  // Current pages start with a full-screen clear. COLOR_OFF means the caller
+  // wants monochrome semantics; explicit RGB white means tri-color semantics.
+  this->mono_compat_mode_ = (color.raw_32 == display::COLOR_OFF.raw_32);
+
+  if (this->mono_compat_mode_) {
+    // Mono compatibility:
+    // white paper => black plane 1, red plane 0
+    memset(this->buffer_, 0xFF, buf_len_half);
+    memset(this->buffer_ + buf_len_half, 0x00, buf_len_half);
+    return;
+  }
+
+  // Tri-color mode defaults to white paper.
+  memset(this->buffer_, 0xFF, buf_len_half);
+  memset(this->buffer_ + buf_len_half, 0x00, buf_len_half);
+
+  if (color.raw_32 == 0) {
+    memset(this->buffer_, 0x00, buf_len_half);
+  } else if ((color.red > 0) && (color.green == 0) && (color.blue == 0)) {
+    memset(this->buffer_ + buf_len_half, 0xFF, buf_len_half);
+  }
+}
+
+void HOT Blozi42BWR::display() {
+  const uint32_t buf_len_half = this->get_buffer_length_() / 2u;
+
+  this->command(0x24);  // black plane
+  this->start_data_();
+  this->write_array(this->buffer_, buf_len_half);
+  this->end_data_();
+
+  this->command(0x26);  // red plane
+  this->start_data_();
+  for (uint32_t i = 0; i < buf_len_half; i++) {
+    this->write_byte(~this->buffer_[buf_len_half + i]);
+  }
+  this->end_data_();
+
+  this->command(0x22);
+  this->data(0xF7);
+  this->command(0x20);
+  this->wait_until_idle_();
+}
+
+void HOT Blozi42BWR::draw_absolute_pixel_internal(int x, int y, Color color) {
+  if (x >= this->get_width_internal() || y >= this->get_height_internal() || x < 0 || y < 0)
+    return;
+
+  const uint32_t buf_half_len = this->get_buffer_length_() / 2u;
+  const uint32_t pos = (x + y * this->get_width_internal()) / 8u;
+  const uint8_t subpos = x & 0x07;
+  const uint8_t mask = 0x80 >> subpos;
+
+  if (this->mono_compat_mode_) {
+    if (color.is_on()) {
+      this->buffer_[pos] &= ~mask;
+    } else {
+      this->buffer_[pos] |= mask;
+    }
+    this->buffer_[pos + buf_half_len] &= ~mask;
+    return;
+  }
+
+  // Default to white paper.
+  this->buffer_[pos] |= mask;
+  this->buffer_[pos + buf_half_len] &= ~mask;
+
+  if (color.raw_32 == 0) {
+    this->buffer_[pos] &= ~mask;
+  } else if ((color.red > 0) && (color.green == 0) && (color.blue == 0)) {
+    this->buffer_[pos + buf_half_len] |= mask;
+  }
+}
+
+int Blozi42BWR::get_width_internal() { return 400; }
+int Blozi42BWR::get_height_internal() { return 300; }
+void Blozi42BWR::dump_config() {
+  LOG_DISPLAY("", "Waveshare E-Paper", this);
+  ESP_LOGCONFIG(TAG, "  Model: BLOZI Endor 4.2 BWR");
+  LOG_PIN("  Reset Pin: ", this->reset_pin_);
+  LOG_PIN("  DC Pin: ", this->dc_pin_);
+  LOG_PIN("  Busy Pin: ", this->busy_pin_);
+  LOG_UPDATE_INTERVAL(this);
+}
+
 // ========================================================
 //               4.20in Type B (LUT from OTP)
 // Datasheet:

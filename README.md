@@ -1,11 +1,11 @@
-# SES42 / SES42BWR / BLOZI42 ESPHome External Component
+# SES42 / SES42BWR / BLOZI42 / BLOZI42BWR ESPHome External Component
 
-An ESPHome `external_components` repository that adds `ses42`, `ses42bwr` and `blozi42` support to the deprecated `waveshare_epaper` platform.
+An ESPHome `external_components` repository that adds `ses42`, `ses42bwr`, `blozi42` and `blozi42bwr` support to the deprecated `waveshare_epaper` platform.
 
 Current scope:
 
-- `ses42`: Black/white only, full refresh only
-- `ses42bwr` & `blozi42`: Black/white only (red plane not currently supported), full refresh only
+- `ses42` & `blozi42`: Black/white only, full refresh only
+- `ses42bwr` & `blozi42bwr`: Black/white/red (three-color), full refresh only
 - Horizontal mirror corrected in software
 - Compiles on ESP8266
 
@@ -25,12 +25,11 @@ Also adapted for:
 - Brand: BLOZI
 - Model: Endor
 - Screen/FPC marking: `P420016-MF1-A`
-- Model name in YAML: `blozi42`
+- Model names in YAML: `blozi42` (mono) or `blozi42bwr` (BWR rendering path)
 
 Not included:
 
 - Partial refresh
-- Red/BWR plane support
 - Upstream ESPHome compatibility guarantees across future releases
 
 ## Repository Layout
@@ -115,16 +114,37 @@ display:
       it.print(10, 10, id(my_font), COLOR_ON, "SES42BWR");
 ```
 
-Use `model: blozi42` for the BLOZI Endor 4.2 panel.
+Example for `blozi42bwr` (BLOZI Endor with BWR rendering path):
+
+```yaml
+spi:
+  clk_pin: GPIO14
+  mosi_pin: GPIO13
+
+display:
+  - platform: waveshare_epaper
+    cs_pin: GPIO15
+    dc_pin: GPIO0
+    busy_pin: GPIO4
+    reset_pin: GPIO2
+    model: blozi42bwr
+    update_interval: 30s
+    lambda: |-
+      it.fill(COLOR_OFF);
+      it.print(10, 10, id(my_font), COLOR_ON, "BLOZI42BWR");
+```
+
+Use `model: blozi42` for mono rendering or `model: blozi42bwr` for BWR rendering path on the BLOZI Endor 4.2 panel.
 
 See [examples/esp8266_ses42bwr_basic.yaml](examples/esp8266_ses42bwr_basic.yaml) for a complete minimal example.
 
 ## Notes
 
 - This repository overrides the built-in `waveshare_epaper` component rather than introducing a brand new ESPHome platform name.
-- Three model variants are available:
+- Four model variants are available:
   - `ses42`: Legacy mono rendering path for SES 4.2 panels
   - `ses42bwr`: Z21-based black/white/red rendering path for SES 4.2 panels
-  - `blozi42`: For BLOZI Endor 4.2 panels
+  - `blozi42`: Mono rendering path for BLOZI Endor 4.2 panels
+  - `blozi42bwr`: BWR rendering path for BLOZI Endor 4.2 panels
 - `full_update_every` is accepted because ESPHome generates calls for it, but these models currently behave as full refresh only.
 - The implementation was derived from a working Arduino SES42BWR driver and adapted into the ESPHome `waveshare_epaper` structure.

@@ -7,10 +7,12 @@ It adds extra 4.2-inch models:
 - `ses42`
 - `ses42bwr`
 - `blozi42`
+- `blozi42bwr`
 
 Current scope:
 
-- Black/white/red
+- `ses42` & `blozi42`: Black/white (two-color)
+- `ses42bwr` & `blozi42bwr`: Black/white/red (three-color)
 - Full refresh only
 - ESP8266 verified to compile
 - Based on the ESPHome `waveshare_epaper` architecture
@@ -35,7 +37,7 @@ Also adapted for:
 - Brand: BLOZI
 - Model: Endor
 - Screen/FPC marking: `P420016-MF1-A`
-- Model name in YAML: `blozi42`
+- Model names in YAML: `blozi42` (mono) or `blozi42bwr` (BWR rendering path)
 
 Not included:
 
@@ -44,13 +46,13 @@ Not included:
 
 ## Files
 
-- `display.py`: registers the `ses42`, `ses42bwr` and `blozi42` models
-- `waveshare_epaper.h`: declares the `Ses42`, `Ses42BWR` and `Blozi42` display classes
+- `display.py`: registers the `ses42`, `ses42bwr`, `blozi42` and `blozi42bwr` models
+- `waveshare_epaper.h`: declares the `Ses42`, `Ses42BWR`, `Blozi42` and `Blozi42BWR` display classes
 - `waveshare_epaper.cpp`: validated 4.2-inch init/LUT sequence, full refresh logic, horizontal mirror fix
 
 ## How To Use
 
-In your YAML, point `external_components` to your local `components` folder and select `model: ses42`, `model: ses42bwr` or `model: blozi42`.
+In your YAML, point `external_components` to your local `components` folder and select `model: ses42`, `model: ses42bwr`, `model: blozi42` or `model: blozi42bwr`.
 
 Example:
 
@@ -72,11 +74,11 @@ display:
     dc_pin: GPIO0
     busy_pin: GPIO4
     reset_pin: GPIO2
-    model: ses42
+    model: blozi42
     update_interval: 30s
     lambda: |-
       it.fill(COLOR_OFF);
-      it.print(10, 10, id(my_font), COLOR_ON, "SES42 4.2");
+      it.print(10, 10, id(my_font), COLOR_ON, "BLOZI Endor 4.2");
 ```
 
 ## Notes
